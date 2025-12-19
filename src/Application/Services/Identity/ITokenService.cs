@@ -1,5 +1,6 @@
 ﻿using Common.Requests.Identity;
 using Common.Responses;
+using Common.Responses.Wrappers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,8 +11,8 @@ namespace Application.Services.Identity
 {
     public interface ITokenService
     {
-        Task<TokenResponse> GetTokenAsync(TokenRequest tokenRequest);
+        Task<ResponseWrapper<TokenResponse>> GetTokenAsync(TokenRequest tokenRequest);
 
-        Task<TokenResponse> GetRefreshTokenAsync(RefreshTokenRequest refreshTokenRequest);
+        Task<ResponseWrapper<TokenResponse>> GetRefreshTokenAsync(RefreshTokenRequest refreshTokenRequest);
     }
 }
