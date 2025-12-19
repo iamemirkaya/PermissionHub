@@ -1,5 +1,6 @@
 using Infrastructure;
 using WebApi;
+using Application;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -7,9 +8,11 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddDatabase(builder.Configuration);
 builder.Services.AddIdentitySettings();
-
+builder.Services.AddApplicationServices();
+builder.Services.AddJwtAuthentication(builder.Services.GetApplicationSettings(builder.Configuration));
+builder.Services.AddIdentityServices();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.RegisterSwagger();
 
 var app = builder.Build();
 
