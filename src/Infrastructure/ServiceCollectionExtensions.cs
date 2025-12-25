@@ -29,7 +29,8 @@ namespace Infrastructure
         {
             services
                 .AddTransient<ITokenService, TokenService>()
-                .AddTransient<IUserService, UserService>();
+                .AddTransient<IUserService, UserService>()
+                .AddScoped<ICurrentUserService, CurrentUserService>();
 
             return services;
         }
@@ -39,6 +40,11 @@ namespace Infrastructure
             services
                 .AddTransient<IEmployeeService, EmployeeService>();
             return services;
+        }
+
+        public static void AddInfrastructureDependencies(this IServiceCollection services)
+        {
+            services.AddAutoMapper(Assembly.GetExecutingAssembly());
         }
 
 
