@@ -23,5 +23,7 @@ namespace Application.Services.Identity
         Task<IResponseWrapper> ChangeUserStatusAsync(ChangeUserStatusRequest request);
 
         Task<IResponseWrapper> GetRolesAsync(string userId);
+
+        Task<IResponseWrapper> UpdateUserRolesAsync(UpdateUserRolesRequest request);
     }
 }
