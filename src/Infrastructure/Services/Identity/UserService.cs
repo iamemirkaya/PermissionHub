@@ -22,12 +22,14 @@ namespace Infrastructure.Services.Identity
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly RoleManager<ApplicationRole> _roleManager;
         private readonly IMapper _mapper;
+        private readonly ICurrentUserService _currentUserService;
 
-        public UserService(UserManager<ApplicationUser> userManager, RoleManager<ApplicationRole> roleManager, IMapper mapper)
+        public UserService(UserManager<ApplicationUser> userManager, RoleManager<ApplicationRole> roleManager, IMapper mapper, ICurrentUserService currentUserService)
         {
             _userManager = userManager;
             _roleManager = roleManager;
             _mapper = mapper;
+            _currentUserService = currentUserService;
         }
 
         public async Task<IResponseWrapper> ChangeUserPasswordAsync(ChangePasswordRequest request)
@@ -184,7 +186,45 @@ namespace Infrastructure.Services.Identity
             return await ResponseWrapper.FailAsync("User does not exist.");
         }
 
+        public async Task<IResponseWrapper> UpdateUserRolesAsync(UpdateUserRolesRequest request)
+        {
+            var userInDb = await _userManager.FindByIdAsync(request.UserId);
+            if (userInDb is not null)
+            {
+                if (userInDb.Email == AppCredentials.Email)
+                {
+                    return await ResponseWrapper.FailAsync("User Roles update not permitted.");
+                }
+                var currentAssignedRoles = await _userManager.GetRolesAsync(userInDb);
+                var rolesToBeAssigned = request.Roles
+                    .Where(role => role.IsAssignedToUser == true)
+                    .ToList();
 
+                var currentLoggedInUser = await _userManager.FindByIdAsync(_currentUserService.UserId);
+                if (currentLoggedInUser is null)
+                {
+                    return await ResponseWrapper.FailAsync("User does not exist.");
+                }
+
+                if (await _userManager.IsInRoleAsync(currentLoggedInUser, AppRoles.Admin))
+                {
+                    var identityResult1 = await _userManager.RemoveFromRolesAsync(userInDb, currentAssignedRoles);
+                    if (identityResult1.Succeeded)
+                    {
+                        var identityResult2 = await _userManager
+                            .AddToRolesAsync(userInDb, rolesToBeAssigned.Select(role => role.RoleName));
+                        if (identityResult2.Succeeded)
+                        {
+                            return await ResponseWrapper<string>.SuccessAsync("User Roles Updated Successfully.");
+                        }
+                        return await ResponseWrapper.FailAsync("An error occurred while adding new roles.");
+                    }
+                    return await ResponseWrapper.FailAsync("An error occurred while removing existing roles.");
+                }
+                return await ResponseWrapper.FailAsync("User Roles update not permitted.");
+            }
+            return await ResponseWrapper.FailAsync("User does not exist.");
+        }
     }
 
 
