@@ -115,6 +115,17 @@ namespace Infrastructure.Services.Identity
             return await ResponseWrapper.FailAsync("User does not exist.");
         }
 
+        public async Task<IResponseWrapper<UserResponse>> GetUserByEmailAsync(string email)
+        {
+            var userInDb = await _userManager.FindByEmailAsync(email);
+            if (userInDb is not null)
+            {
+                var mappedUser = _mapper.Map<UserResponse>(userInDb);
+                return await ResponseWrapper<UserResponse>.SuccessAsync(mappedUser);
+            }
+            return await ResponseWrapper<UserResponse>.FailAsync("User does not exist");
+        }
+
         public async Task<IResponseWrapper> GetUserByIdAsync(string userId)
         {
             var userInDb = await _userManager.FindByIdAsync(userId);
