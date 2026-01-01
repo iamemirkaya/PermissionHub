@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Common.Responses.Identity;
 
 namespace Application.Services.Identity
 {
@@ -25,5 +26,7 @@ namespace Application.Services.Identity
         Task<IResponseWrapper> GetRolesAsync(string userId);
 
         Task<IResponseWrapper> UpdateUserRolesAsync(UpdateUserRolesRequest request);
+
+        Task<IResponseWrapper<UserResponse>> GetUserByEmailAsync(string email);
     }
 }
