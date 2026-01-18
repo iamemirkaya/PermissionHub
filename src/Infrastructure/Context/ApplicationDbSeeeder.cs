@@ -55,7 +55,8 @@ namespace Infrastructure.Context
                 PhoneNumberConfirmed = true,
                 NormalizedEmail = AppCredentials.Email.ToUpperInvariant(),
                 NormalizedUserName = adminUserName.ToUpperInvariant(),
-                IsActive = true
+                IsActive = true,
+                SecurityStamp = Guid.NewGuid().ToString()
             };
 
             if (!await _userManager.Users.AnyAsync(u => u.Email == AppCredentials.Email))
@@ -85,7 +86,8 @@ namespace Infrastructure.Context
                 PhoneNumberConfirmed = true,
                 NormalizedEmail = "CAN.DEMIR@ABC.COM", 
                 NormalizedUserName = "CANDEMIR",       
-                IsActive = true
+                IsActive = true,
+                SecurityStamp = Guid.NewGuid().ToString()
             };
 
             if (!await _userManager.Users.AnyAsync(u => u.Email == "can.demir@abc.com"))

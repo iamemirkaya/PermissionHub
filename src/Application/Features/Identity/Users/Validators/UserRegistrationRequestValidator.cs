@@ -36,7 +36,7 @@ namespace Application.Features.Identity.Users.Validators
                 .MaximumLength(256);
             RuleFor(request => request.Password)
                 .NotEmpty();
-            RuleFor(request => request.ComfirmPassword)
+            RuleFor(request => request.ConfirmPassword)
                 .Must((req, confirmed) => req.Password == confirmed)
                 .WithMessage("Passwords do not match.");
         }

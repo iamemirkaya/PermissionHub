@@ -38,6 +38,18 @@ namespace WebApi.Controllers.Identity
             return NotFound(response);
         }
 
+        [HttpGet]
+        [MustHavePermission(AppFeature.Users, AppAction.Read)]
+        public async Task<IActionResult> GetAllUsers()
+        {
+            var response = await MediatorSender.Send(new GetAllUsersQuery());
+            if (response.IsSuccessful)
+            {
+                return Ok(response);
+            }
+            return NotFound(response);
+        }
+
         [HttpPut]
         [MustHavePermission(AppFeature.Users, AppAction.Update)]
         public async Task<IActionResult> UpdateUserDetails([FromBody] UpdateUserRequest updateUser)

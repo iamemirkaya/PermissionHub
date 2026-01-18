@@ -159,11 +159,10 @@ namespace Infrastructure.Services.Identity
 
             var claims = new List<Claim>
             {
-                new (ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new(ClaimTypes.Email, user.Email),
-                new(ClaimTypes.Name, user.FirstName),
-                new(ClaimTypes.Surname, user.LastName),
-                new(ClaimTypes.MobilePhone, user.PhoneNumber ?? string.Empty)
+                new(JwtRegisteredClaimNames.Sub, user.Id.ToString()), 
+                new(JwtRegisteredClaimNames.Email, user.Email),       
+                new(JwtRegisteredClaimNames.GivenName, user.FirstName), 
+                new(JwtRegisteredClaimNames.FamilyName, user.LastName), 
             }
             .Union(userClaims)
             .Union(roleClaims)
