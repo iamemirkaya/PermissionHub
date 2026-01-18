@@ -26,6 +26,7 @@ builder.Services.AddJwtAuthentication(builder.Services.GetApplicationSettings(bu
 builder.Services.AddIdentityServices();
 builder.Services.AddEmployeeService();
 builder.Services.AddInfrastructureDependencies();
+builder.Services.AddMailService(builder.Configuration);
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.RegisterSwagger();
 

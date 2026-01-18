@@ -1,8 +1,11 @@
 ﻿using Application.Services.Employees;
 using Application.Services.Identity;
+using Application.Services.MailService;
+using Common.Requests.Settings;
 using Infrastructure.Context;
 using Infrastructure.Services.Employees;
 using Infrastructure.Services.Identity;
+using Infrastructure.Services.MailService;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -41,6 +44,15 @@ namespace Infrastructure
         {
             services
                 .AddTransient<IEmployeeService, EmployeeService>();
+            return services;
+        }
+
+        public static IServiceCollection AddMailService(this IServiceCollection services, IConfiguration configuration)
+        {
+            services.Configure<MailSettings>(configuration.GetSection("MailSettings"));
+
+            services.AddTransient<IEmailService, EmailService>();
+
             return services;
         }
 

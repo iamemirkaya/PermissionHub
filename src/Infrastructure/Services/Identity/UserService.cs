@@ -1,4 +1,6 @@
-﻿using Application.Services.Identity;
+﻿using Application.DTOs.Email;
+using Application.Services.Identity;
+using Application.Services.MailService;
 using AutoMapper;
 using Common.Authorization;
 using Common.Requests.Identity;
@@ -6,6 +8,7 @@ using Common.Responses.Identity;
 using Common.Responses.Wrappers;
 using Infrastructure.Models;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -23,13 +26,15 @@ namespace Infrastructure.Services.Identity
         private readonly RoleManager<ApplicationRole> _roleManager;
         private readonly IMapper _mapper;
         private readonly ICurrentUserService _currentUserService;
+        private readonly IEmailService _emailService;
 
-        public UserService(UserManager<ApplicationUser> userManager, RoleManager<ApplicationRole> roleManager, IMapper mapper, ICurrentUserService currentUserService)
+        public UserService(UserManager<ApplicationUser> userManager, RoleManager<ApplicationRole> roleManager, IMapper mapper, ICurrentUserService currentUserService, IEmailService emailService)
         {
             _userManager = userManager;
             _roleManager = roleManager;
             _mapper = mapper;
             _currentUserService = currentUserService;
+            _emailService = emailService;
         }
 
         public async Task<IResponseWrapper> ChangeUserPasswordAsync(ChangePasswordRequest request)
@@ -172,6 +177,33 @@ namespace Infrastructure.Services.Identity
             if (identityResult.Succeeded)
             {
                 await _userManager.AddToRoleAsync(newUser, AppRoles.Basic);
+
+                if (!request.AutoComfirmEmail)
+                {
+                    var verificationToken = await _userManager.GenerateEmailConfirmationTokenAsync(newUser);
+
+                    verificationToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(verificationToken));
+
+                    var verificationUrl = $"https://localhost:3000/confirm-email?userId={newUser.Id}&code={verificationToken}";
+
+                    var emailRequest = new EmailRequest
+                    {
+                        To = newUser.Email,
+                        Subject = "PermissionHub Hesabınızı Onaylayın",
+                        Body = $"<h3>Hoşgeldiniz {newUser.FirstName}!</h3><p>Hesabınızı onaylamak için lütfen <a href='{verificationUrl}'>buraya tıklayınız</a>.</p>"
+                    };
+
+                    await _emailService.SendAsync(emailRequest);
+
+                    var mailResponse = await _emailService.SendAsync(emailRequest);
+
+                    if (!mailResponse.IsSuccessful)
+                    {
+                        return await ResponseWrapper.FailAsync($"Kullanıcı oluştu ama mail gönderilemedi. Hata: {string.Join(',', mailResponse.Messages)}");
+                    }
+
+                    return await ResponseWrapper<string>.SuccessAsync($"User registered successfully. Please check your email ({newUser.Email}) to confirm your account.");
+                }
 
                 return await ResponseWrapper<string>.SuccessAsync("User registered successfully.");
             }
