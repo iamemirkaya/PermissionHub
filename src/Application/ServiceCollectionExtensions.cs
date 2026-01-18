@@ -12,10 +12,15 @@ namespace Application
         public static IServiceCollection AddApplicationServices(this IServiceCollection services)
         {
             var assembly = Assembly.GetExecutingAssembly();
+
+            services.AddMediatR(configuration =>
+            {
+                configuration.RegisterServicesFromAssembly(assembly);
+            });
+
             return services
-                .AddMediatR(assembly)
                 .AddAutoMapper(assembly)
-                .AddValidatorsFromAssembly(Assembly.GetExecutingAssembly())
+                .AddValidatorsFromAssembly(assembly)
                 .AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationPipelineBehaviour<,>));
         }
     }

@@ -171,7 +171,7 @@ namespace WebApi
                 options.SwaggerDoc("v1", new OpenApiInfo
                 {
                     Version = "v1",
-                    Title = "ABCHR API",
+                    Title = "PermissionHub API",
                     License = new OpenApiLicense
                     {
                         Name = "MIT License",

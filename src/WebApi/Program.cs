@@ -25,13 +25,14 @@ builder.Services.AddApplicationServices();
 builder.Services.AddJwtAuthentication(builder.Services.GetApplicationSettings(builder.Configuration));
 builder.Services.AddIdentityServices();
 builder.Services.AddEmployeeService();
+builder.Services.AddInfrastructureDependencies();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.RegisterSwagger();
 
 var app = builder.Build();
 
 
-app.SeedDatabase();
+// app.SeedDatabase();
 
 if (app.Environment.IsDevelopment())
 {
@@ -41,7 +42,10 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+
 app.UseCors();
+
+app.UseAuthentication();
 
 app.UseAuthorization();
 
