@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Common.Responses.Identity;
+using Application.Features.Identity.Users.Commands;
 
 namespace Application.Services.Identity
 {
@@ -19,8 +20,6 @@ namespace Application.Services.Identity
 
         Task<IResponseWrapper> UpdateUserAsync(UpdateUserRequest request);
 
-        Task<IResponseWrapper> ChangeUserPasswordAsync(ChangePasswordRequest request);
-
         Task<IResponseWrapper> ChangeUserStatusAsync(ChangeUserStatusRequest request);
 
         Task<IResponseWrapper> GetRolesAsync(string userId);
@@ -28,5 +27,10 @@ namespace Application.Services.Identity
         Task<IResponseWrapper> UpdateUserRolesAsync(UpdateUserRolesRequest request);
 
         Task<IResponseWrapper<UserResponse>> GetUserByEmailAsync(string email);
+
+       Task<IResponseWrapper<string>> ConfirmEmailAsync(string userId, string code);
+
+        Task ForgotPassword(ForgotPasswordRequest model, string origin);
+        Task<IResponseWrapper<string>> ResetPassword(ResetPasswordRequest model);
     }
 }

@@ -10,5 +10,7 @@ namespace Application.AppConfigs
     {
         public string Secret { get; set; }
         public int TokenExpiryInMinutes { get; set; }
+
+        public string GoogleClientId { get; set; }
     }
 }
