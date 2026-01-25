@@ -3,6 +3,7 @@ using Application.Services.Identity;
 using Common.Requests.Identity;
 using Common.Responses;
 using Common.Responses.Wrappers;
+using Google.Apis.Auth;
 using Infrastructure.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
@@ -192,6 +193,87 @@ namespace Infrastructure.Services.Identity
             }
 
             return principal;
+        }
+
+        public async Task<ResponseWrapper<TokenResponse>> GoogleLoginAsync(GoogleLoginRequest request)
+        {
+            var settings = new GoogleJsonWebSignature.ValidationSettings()
+            {
+
+                Audience = new List<string>() { _appConfiguration.GoogleClientId  }
+   
+            };
+
+            var payload = await GoogleJsonWebSignature.ValidateAsync(request.IdToken, settings);
+
+            var info = new UserLoginInfo(request.Provider, payload.Subject, request.Provider);
+
+            var user = await _userManager.FindByLoginAsync(info.LoginProvider, info.ProviderKey);
+
+            if (user == null)
+            {
+                user = await _userManager.FindByEmailAsync(payload.Email);
+
+                if (user == null)
+                {
+                    return await ResponseWrapper<TokenResponse>.FailAsync("Bu mail adresi ile sistemde kayıtlı kullanıcı bulunamadı. Lütfen önce kayıt olun.");
+                }
+
+                var addLoginResult = await _userManager.AddLoginAsync(user, info);
+                if (!addLoginResult.Succeeded)
+                {
+                    return await ResponseWrapper<TokenResponse>.FailAsync("Google hesabı sistemdeki kullanıcıyla eşleştirilemedi.");
+                }
+            }
+            return await CreateUserExternalAsync(user);
+        }
+
+        private async Task<ResponseWrapper<TokenResponse>> CreateUserExternalAsync(ApplicationUser user)
+        {
+            if (!user.IsActive)
+            {
+                return await ResponseWrapper<TokenResponse>.FailAsync("Kullanıcı hesabı aktif değil.");
+            }
+
+            var tokenString = await GenerateJWTAsync(user);
+
+            user.RefreshToken = GenerateRefreshToken();
+            user.RefreshTokenExpiryDate = DateTime.Now.AddDays(7); 
+
+            var updateResult = await _userManager.UpdateAsync(user);
+            if (!updateResult.Succeeded)
+            {
+                return await ResponseWrapper<TokenResponse>.FailAsync("Token üretilirken bir hata oluştu.");
+            }
+
+            var response = new TokenResponse
+            {
+                Token = tokenString,
+                RefreshToken = user.RefreshToken,
+                RefreshTokenExpiryTime = user.RefreshTokenExpiryDate
+            };
+
+            return await ResponseWrapper<TokenResponse>.SuccessAsync(response, "Google ile giriş başarılı.");
+        }
+
+        public async Task<IResponseWrapper> RevokeRefreshTokenAsync(string userId)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+            {
+                return await ResponseWrapper.FailAsync("Kullanıcı bulunamadı.");
+            }
+            user.RefreshToken = null;
+            user.RefreshTokenExpiryDate = null; 
+
+            var result = await _userManager.UpdateAsync(user);
+
+            if (result.Succeeded)
+            {
+                return await ResponseWrapper.SuccessAsync("Token başarıyla iptal edildi (Çıkış yapıldı).");
+            }
+
+            return await ResponseWrapper.FailAsync("Token iptal edilirken bir hata oluştu.");
         }
     }
 }

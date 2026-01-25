@@ -1,4 +1,5 @@
 ﻿using Application.Features.Identity.Token.Queries;
+using Application.Features.Identity.Users.Commands;
 using Common.Requests.Identity;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -27,6 +28,18 @@ namespace WebApi.Controllers.Identity
         {
             var response = await MediatorSender.Send(
                 new GetRefreshTokenQuery { RefreshTokenRequest = refreshTokenRequest });
+            if (response.IsSuccessful)
+            {
+                return Ok(response);
+            }
+            return BadRequest(response);
+        }
+
+        [HttpPost("revoke")]
+        public async Task<IActionResult> Revoke()
+        {
+            var response = await MediatorSender.Send(new RevokeTokenCommandRequest());
+
             if (response.IsSuccessful)
             {
                 return Ok(response);

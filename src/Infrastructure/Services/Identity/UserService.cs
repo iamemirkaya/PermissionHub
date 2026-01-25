@@ -1,7 +1,9 @@
 ﻿using Application.DTOs.Email;
+using Application.Features.Identity.Users.Commands;
 using Application.Services.Identity;
 using Application.Services.MailService;
 using AutoMapper;
+using Azure;
 using Common.Authorization;
 using Common.Requests.Identity;
 using Common.Responses.Identity;
@@ -37,24 +39,6 @@ namespace Infrastructure.Services.Identity
             _emailService = emailService;
         }
 
-        public async Task<IResponseWrapper> ChangeUserPasswordAsync(ChangePasswordRequest request)
-        {
-            var userInDb = await _userManager.FindByIdAsync(request.UserId);
-            if (userInDb is not null)
-            {
-                var identityResult = await _userManager.ChangePasswordAsync(
-                    userInDb,
-                    request.CurrentPassword,
-                    request.NewPassword);
-                if (identityResult.Succeeded)
-                {
-                    return await ResponseWrapper<string>.SuccessAsync("User password updated.");
-                }
-                return await ResponseWrapper.FailAsync("User password updated.");
-            }
-            return await ResponseWrapper.FailAsync("User does not exist.");
-        }
-
         public async Task<IResponseWrapper> ChangeUserStatusAsync(ChangeUserStatusRequest request)
         {
             var userInDb = await _userManager.FindByIdAsync(request.UserId);
@@ -72,6 +56,55 @@ namespace Infrastructure.Services.Identity
                 return await ResponseWrapper.FailAsync("User actived failed");
             }
             return await ResponseWrapper.FailAsync("User does not exist.");
+        }
+
+        public async Task<IResponseWrapper<string>> ConfirmEmailAsync(string userId, string code)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+
+            if (user == null)
+            {
+                return await ResponseWrapper<string>.FailAsync("User not found.");
+            }
+
+            code = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(code));
+
+            var result = await _userManager.ConfirmEmailAsync(user, code);
+
+            if (result.Succeeded)
+            {
+                return await ResponseWrapper<string>.SuccessAsync("Email confirmed successfully.");
+            }
+            else
+            {
+                return await ResponseWrapper<string>.FailAsync($"An error occured while confirming {user.Email}.");
+            }
+        }
+
+        public async Task ForgotPassword(ForgotPasswordRequest model, string origin)
+        {
+
+            var account = await _userManager.FindByEmailAsync(model.Email);
+            if (account == null) return;
+
+            var code = await _userManager.GeneratePasswordResetTokenAsync(account);
+            code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
+
+            var route = "reset-password";
+            var uriString = $"{origin}/{route}";
+            var endpointUri = new Uri(uriString);
+
+            var passwordResetUrl = QueryHelpers.AddQueryString(endpointUri.ToString(), "token", code);
+            passwordResetUrl = QueryHelpers.AddQueryString(passwordResetUrl, "email", model.Email);
+
+            var emailRequest = new EmailRequest()
+            {
+                Body = $"Please <a href='{passwordResetUrl}'>click here</a> to reset your password.",
+                To = model.Email,
+                Subject = "Reset Password",
+            };
+
+            await _emailService.SendAsync(emailRequest);
         }
 
         public async Task<IResponseWrapper> GetAllUsersAsync()
@@ -208,6 +241,42 @@ namespace Infrastructure.Services.Identity
                 return await ResponseWrapper<string>.SuccessAsync("User registered successfully.");
             }
             return await ResponseWrapper.FailAsync("User registered failed.");
+        }
+
+        public async Task<IResponseWrapper<string>> ResetPassword(ResetPasswordRequest model)
+        {
+
+            var account = await _userManager.FindByEmailAsync(model.Email);
+
+            if (account == null)
+            {
+                return await ResponseWrapper<string>.FailAsync($"No Accounts Registered with {model.Email}.");
+            }
+
+            try
+            {
+                var decodedToken = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(model.Token));
+
+                var result = await _userManager.ResetPasswordAsync(account, decodedToken, model.Password);
+
+                if (result.Succeeded)
+                {
+                    await _userManager.UpdateSecurityStampAsync(account);
+
+                    return await ResponseWrapper<string>.SuccessAsync(model.Email, "Password Reset Successful.");
+                }
+                else
+                {
+                    var errorMessages = result.Errors.Select(e => e.Description).ToList();
+                    var fullErrorMessage = string.Join(" ", errorMessages);
+
+                    return await ResponseWrapper<string>.FailAsync(fullErrorMessage);
+                }
+            }
+            catch (Exception ex)
+            {
+                return await ResponseWrapper<string>.FailAsync($"An error occurred while resetting password: {ex.Message}");
+            }
         }
 
         public async Task<IResponseWrapper> UpdateUserAsync(UpdateUserRequest request)

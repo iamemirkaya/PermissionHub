@@ -14,5 +14,9 @@ namespace Application.Services.Identity
         Task<ResponseWrapper<TokenResponse>> GetTokenAsync(TokenRequest tokenRequest);
 
         Task<ResponseWrapper<TokenResponse>> GetRefreshTokenAsync(RefreshTokenRequest refreshTokenRequest);
+
+        Task<ResponseWrapper<TokenResponse>> GoogleLoginAsync(GoogleLoginRequest request);
+
+        Task<IResponseWrapper> RevokeRefreshTokenAsync(string userId);
     }
 }

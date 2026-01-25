@@ -2,6 +2,7 @@
 using Application.Features.Identity.Users.Queries;
 using Common.Authorization;
 using Common.Requests.Identity;
+using Common.Responses.Wrappers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -24,6 +25,14 @@ namespace WebApi.Controllers.Identity
                 return Ok(response);
             }
             return BadRequest(response);
+        }
+
+        [HttpPost("google-login")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginCommandRequest request)
+        {
+            var response = await MediatorSender.Send(request);
+            return Ok(response);
         }
 
         [HttpGet("{userId}")]
@@ -62,18 +71,6 @@ namespace WebApi.Controllers.Identity
             return NotFound(response);
         }
 
-        [HttpPut("change-password")]
-        [AllowAnonymous]
-        public async Task<IActionResult> ChangeUserPassword([FromBody] ChangePasswordRequest changePassword)
-        {
-            var response = await MediatorSender
-                .Send(new ChangeUserPasswordCommand { ChangePassword = changePassword });
-            if (response.IsSuccessful)
-            {
-                return Ok(response);
-            }
-            return NotFound(response);
-        }
 
         [HttpPut("change-status")]
         [MustHavePermission(AppFeature.Users, AppAction.Update)]
@@ -112,6 +109,65 @@ namespace WebApi.Controllers.Identity
                 return Ok(response);
             }
             return BadRequest(response);
+        }
+
+        [HttpGet("confirm-email")]
+        [AllowAnonymous] 
+        public async Task<IActionResult> ConfirmEmail([FromQuery] string userId, [FromQuery] string code)
+        {
+
+            var response = await MediatorSender.Send(new ConfirmEmailCommand { UserId = userId, Code = code });
+
+            return BadRequest(response);
+        }
+
+        [HttpPost("forgot-password")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+        {
+            if (request == null || string.IsNullOrEmpty(request.Email))
+            {
+                return BadRequest(await ResponseWrapper.FailAsync("E-posta adresi gereklidir."));
+            }
+
+            var origin = GetOriginFromRequest();
+
+            var command = new ForgotPasswordCommand
+            {
+                Email = request.Email,
+                Origin = origin
+            };
+
+            var response = await MediatorSender.Send(command);
+
+            return Ok(response);
+        }
+
+        [HttpPost("reset-password")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+        {
+            var command = new ResetPasswordCommand
+            {
+                Email = request.Email,
+                Password = request.Password,
+                Token = request.Token,
+                ConfirmPassword = request.ConfirmPassword
+            };
+
+            var response = await MediatorSender.Send(command);
+
+            return Ok(response);
+        }
+
+
+        private string GetOriginFromRequest()
+        {
+            if (Request.Headers.ContainsKey("origin"))
+            {
+                return Request.Headers["origin"].ToString();
+            }
+            return $"{Request.Scheme}://{Request.Host.Value}{Request.PathBase.Value}";
         }
     }
 }
