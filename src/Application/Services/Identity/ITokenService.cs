@@ -18,5 +18,7 @@ namespace Application.Services.Identity
         Task<ResponseWrapper<TokenResponse>> GoogleLoginAsync(GoogleLoginRequest request);
 
         Task<IResponseWrapper> RevokeRefreshTokenAsync(string userId);
+
+        Task<ResponseWrapper<TokenResponse>> VerifyTwoFactorAsync(string email, string code);
     }
 }

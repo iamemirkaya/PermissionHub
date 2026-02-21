@@ -1,5 +1,7 @@
 ﻿using Application.AppConfigs;
+using Application.DTOs.Email;
 using Application.Services.Identity;
+using Application.Services.MailService;
 using Common.Requests.Identity;
 using Common.Responses;
 using Common.Responses.Wrappers;
@@ -25,13 +27,15 @@ namespace Infrastructure.Services.Identity
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly RoleManager<ApplicationRole> _roleManager;
         private readonly AppConfiguration _appConfiguration;
+        private readonly IEmailService _emailService;
 
 
-        public TokenService(UserManager<ApplicationUser> userManager, RoleManager<ApplicationRole> roleManager, IOptions<AppConfiguration> appConfiguration)
+        public TokenService(UserManager<ApplicationUser> userManager, RoleManager<ApplicationRole> roleManager, IOptions<AppConfiguration> appConfiguration, IEmailService emailService)
         {
             _userManager = userManager;
             _roleManager = roleManager;
             _appConfiguration = appConfiguration.Value;
+            _emailService = emailService;
 
         }
 
@@ -58,6 +62,23 @@ namespace Infrastructure.Services.Identity
             if (!isPaswordValid)
             {
                 return await ResponseWrapper<TokenResponse>.FailAsync("Invalid Credentials.");
+            }
+
+            if (await _userManager.GetTwoFactorEnabledAsync(user))
+            {
+                var twoFactorToken = await _userManager.GenerateTwoFactorTokenAsync(user, "Email");
+
+                await _emailService.SendAsync(new EmailRequest
+                {
+                    To = user.Email,
+                    Subject = "PermissionHub - Login Verification Code",
+                    Body = $"<h3>Your Login Verification Code: <strong>{twoFactorToken}</strong></h3><p>This code is valid for a few minutes.</p>"
+                });
+
+                return await ResponseWrapper<TokenResponse>.SuccessAsync(new TokenResponse
+                {
+                    RequiresTwoFactor = true
+                }, "Verification code has been sent to your email address.");
             }
 
             user.RefreshToken = GenerateRefreshToken();
@@ -274,6 +295,30 @@ namespace Infrastructure.Services.Identity
             }
 
             return await ResponseWrapper.FailAsync("Token iptal edilirken bir hata oluştu.");
+        }
+
+        public async Task<ResponseWrapper<TokenResponse>> VerifyTwoFactorAsync(string email, string code)
+        {
+            var user = await _userManager.FindByEmailAsync(email);
+            if (user is null)
+                return await ResponseWrapper<TokenResponse>.FailAsync("User not found.");
+
+            var isValid = await _userManager.VerifyTwoFactorTokenAsync(user, "Email", code);
+            if (!isValid)
+                return await ResponseWrapper<TokenResponse>.FailAsync("Code is invalid or expired.");
+
+            user.RefreshToken = GenerateRefreshToken();
+            user.RefreshTokenExpiryDate = DateTime.Now.AddDays(7);
+            await _userManager.UpdateAsync(user);
+
+            var token = await GenerateJWTAsync(user);
+
+            return await ResponseWrapper<TokenResponse>.SuccessAsync(new TokenResponse
+            {
+                Token = token,
+                RefreshToken = user.RefreshToken,
+                RefreshTokenExpiryTime = user.RefreshTokenExpiryDate
+            });
         }
     }
 }
