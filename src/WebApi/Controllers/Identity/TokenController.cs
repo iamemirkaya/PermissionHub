@@ -46,5 +46,14 @@ namespace WebApi.Controllers.Identity
             }
             return BadRequest(response);
         }
+
+        [HttpPost("verify-2fa")]
+        [AllowAnonymous]
+        public async Task<IActionResult> VerifyTwoFactor([FromBody] VerifyTwoFactorQuery query)
+        {
+            var response = await MediatorSender.Send(query);
+            if (response.IsSuccessful) return Ok(response);
+            return BadRequest(response);
+        }
     }
 }
